@@ -2,7 +2,7 @@
 
 **Nombre:** Juan Carlos
 
-**Usuario de GitHub:** Escribe aquí tu usuario
+**Usuario de GitHub:** @Ledger146
 
 ---
 
