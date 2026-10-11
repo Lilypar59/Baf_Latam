@@ -25,7 +25,7 @@ La propuesta no depende inicialmente de que el Gobierno la haga obligatoria. Sin
 
 ## Propuestas descartadas
 
-**Dinero unificado para viajeros y migrantes** (propuesta por: _[nombre]_). Se descartó porque existen soluciones actuales que ya cubren buena parte del problema planteado, por lo que el espacio de diferenciación identificado por el equipo era más reducido.
+**Dinero unificado para viajeros y migrantes** (propuesta por: Juan Carlos Vargas). Se descartó porque existen soluciones actuales que ya cubren buena parte del problema planteado, por lo que el espacio de diferenciación identificado por el equipo era más reducido.
 
 **Identidad digital: problema y oportunidad** (propuesta por Alexis Suárez). Se descartó porque el equipo identificó alternativas tecnológicas existentes y porque no estaba suficientemente claro qué parte del problema requería blockchain frente a soluciones tradicionales de seguridad, identidad e interoperabilidad.
 
@@ -84,11 +84,12 @@ Actualmente puede conservar facturas, órdenes de trabajo, fotografías y conver
 
 ### Actores principales del MVP
 
-| Actor                       | Necesidad                              | Acción                     |
-| --------------------------- | -------------------------------------- | -------------------------- |
-| Propietario                 | Conservar y demostrar el historial     | Consulta y autoriza acceso |
-| Taller                      | Dejar evidencia del servicio realizado | Registra el mantenimiento  |
-| Comprador/nuevo propietario | Conocer el historial antes de comprar  | Consulta y verifica        |
+| Actor             | Necesidad                                | Acción                                        |
+| ----------------- | ---------------------------------------- | --------------------------------------------- |
+| Propietario       | Conservar y demostrar el historial       | Consulta y autoriza acceso                    |
+| Taller            | Dejar evidencia del servicio realizado   | Registra el mantenimiento                     |
+| nuevo propietario | Conocer el historial antes de comprar    | Consulta y verifica                           |
+| Administrador     | Controlar participantes y calidad básica | Valida la incorporación de talleres y detecta |
 
 ### Actores futuros
 
@@ -112,9 +113,8 @@ flowchart LR
     A --> C[Factura u orden al propietario]
     C --> D[Propietario conserva documentos]
     D --> E[Nuevo taller solicita historial]
-    D --> F[Venta del vehículo]
-    F --> G[Comprador consulta RUNT y/o solicita peritaje]
-    G --> H[Traspaso ante organismo de tránsito]
+    D --> F[Nuevo propietario consulta historial]
+    F --> G[transferencia de propietario del vehículo]
 ```
 
 ### Secuencia
@@ -124,8 +124,8 @@ flowchart LR
 3. El taller entrega factura, orden de trabajo u otro comprobante.
 4. El propietario conserva los documentos o registros digitales.
 5. Si cambia de taller, debe aportar la información que haya conservado.
-6. Si vende el vehículo, el comprador puede revisar la información oficial disponible y solicitar una inspección o peritaje.
-7. El traspaso de propiedad se realiza mediante el procedimiento establecido por los organismos de tránsito.
+6. Si vende el vehículo, el nuevo propietario puede revisar la información oficial disponible y solicitar una inspección o peritaje.
+7. La trasferencia de propietario se realiza mediante el procedimiento establecido por los organismos de tránsito y las entidades responsables, sin embargo el propietario actual trasfiere vehiculo a nuevo propietario.
 8. La continuidad del historial de mantenimiento depende de que los documentos y registros anteriores permanezcan disponibles.
 
 ---
@@ -162,7 +162,7 @@ El cambio de propietario no implica necesariamente la transferencia estructurada
 
 ### Oportunidad priorizada
 
-La oportunidad priorizada es facilitar un **historial de mantenimiento verificable durante la compra o transferencia de un vehículo**.
+La oportunidad priorizada es facilitar un **historial de mantenimiento verificable durante la transferencia de un vehículo**.
 
 Esta oportunidad concentra varias fricciones: si el historial se registra de manera estructurada y verificable, puede reducir la dependencia de documentos dispersos, facilitar la continuidad de la información y proporcionar evidencia adicional al comprador.
 
@@ -170,14 +170,14 @@ Esta oportunidad concentra varias fricciones: si el historial se registra de man
 
 Creemos que un registro compartido en el que los talleres participantes registren los servicios realizados, junto con datos como fecha y kilometraje, y cuya evidencia posterior de modificación sea detectable, puede mejorar la confianza sobre el historial de mantenimiento del vehículo.
 
-El comprador podría consultar el historial mediante una interfaz web y verificar la secuencia de registros. El propietario podría conservar una evidencia del mantenimiento aunque pierda sus comprobantes físicos. Un nuevo taller podría consultar el historial autorizado para conocer servicios anteriores.
+El nuevo propietario podría consultar el historial mediante una interfaz web y verificar la secuencia de registros. El propietario podría conservar una evidencia del mantenimiento aunque pierda sus comprobantes físicos. Un nuevo taller podría consultar el historial autorizado para conocer servicios anteriores.
 
 ### Caso de uso principal del MVP
 
-**Comprar un vehículo usado y verificar su historial de mantenimiento.**
+**Transferir la propiedad de un vehículo y verificar su historial de mantenimiento.**
 
 ```text
-Comprador
+Nuevo propietario
    |
    | consulta vehículo
    v
