@@ -1,51 +1,92 @@
-# VehicleChain — Semana 3: Functional Proof
+# VehicleChain — Documentación Semana 3 (Functional Proof)
 
 ## 1. Front construido
 
-> Pendiente: documentar pantallas, navegación, roles, relación con historias de usuario y MVP, y capturas o enlace al front funcionando (400–2000 palabras).
+VehicleChain es una interfaz web que permite recorrer el flujo principal del
+MVP definido en el Product Blueprint: un historial de mantenimiento vehicular
+que distintos talleres alimentan, que un propietario controla, y que un
+administrador supervisa validando talleres y revisando registros
+potencialmente duplicados.
 
----
+La pantalla inicial presenta una selección de rol simulada (sin
+autenticación real todavía): Propietario, Taller o Administrador. Cada rol
+abre su propio panel, con una barra lateral de navegación y un botón para
+cambiar de rol en cualquier momento.
+
+**Panel de Propietario.** Incluye cuatro pantallas: registrar un vehículo
+(HU1JP), consultar el historial de mantenimiento del vehículo en orden
+cronológico (HU2JP), administrar permisos de acceso por taller (HU3JP), y
+transferir el control del historial a un nuevo propietario (HU4JP). La
+pantalla de historial es la que comunica la propuesta de valor central del
+producto: un registro continuo construido por distintos talleres, en vez de
+facturas y documentos dispersos.
+
+**Panel de Taller.** Incluye el registro de un taller nuevo, que queda en
+estado "pendiente de validación" hasta que un administrador lo revisa
+(HU1JT), y el registro de un servicio de mantenimiento sobre un vehículo
+existente (HU2JT). Al registrar un servicio, la aplicación simula la
+publicación de su evidencia —un hash y una transacción de ejemplo en Stellar
+Testnet— dejando claro que es una demostración del flujo y no una
+transacción real (HU3JT).
+
+**Panel de Administrador.** Permite revisar las solicitudes de talleres
+pendientes y aprobarlas o rechazarlas (HU1JA), y revisar registros de
+mantenimiento potencialmente duplicados —mismo vehículo, mismo tipo de
+servicio, misma fecha, registrados por talleres distintos— antes de que se
+conviertan en una disputa entre propietario y taller (HU6JA).
+
+La navegación completa funciona de extremo a extremo dentro de cada rol, sin
+rutas rotas ni pantallas aisladas. Todos los datos son simulados (en memoria
+del navegador): no hay backend ni base de datos todavía, como corresponde a
+esta etapa del proyecto.
+
+_(Agregar aquí: captura de pantalla o enlace al front funcionando, por
+ejemplo un enlace de Vercel.)_
 
 ## 2. Decisión técnica
 
-### Opción elegida: A — Contrato propio en Soroban
+VehicleChain elige la **Opción A — contrato propio en Soroban**, en lugar de
+usar una herramienta existente del ecosistema Stellar.
 
-VehicleChain creará su propio contrato Soroban, desplegado inicialmente en **Stellar Testnet**. Esta semana solo se documenta la decisión; el contrato se implementará en la siguiente etapa.
+Se descarta la Opción B porque el producto necesita reglas de negocio
+específicas del dominio —quién puede registrar un servicio sobre qué
+vehículo, cómo se transfiere el control de un historial entre propietarios,
+qué cuenta como evidencia válida de un mantenimiento, cómo se valida la
+incorporación de un taller— que no corresponden a lo que resuelve una
+herramienta genérica del ecosistema.
 
-### Qué hará el contrato
+El contrato no sustituye la base de datos del producto: los datos
+personales, los documentos completos y el detalle de cada mantenimiento
+siguen viviendo fuera de la cadena (off-chain). Lo que el contrato
+registrará y hará consultable en Stellar/Soroban es la evidencia de que
+esos eventos ocurrieron y no fueron alterados después: identificador del
+vehículo, identificador del servicio, identificador del taller, un hash de
+la evidencia del registro, marca de tiempo, y el evento de transferencia del
+historial entre propietarios. Aporta integridad y trazabilidad sobre la
+evidencia, no una verificación de que el mantenimiento ocurrió físicamente.
 
-El Blueprint define que Stellar no se usa para el CRUD de vehículos, talleres y servicios (eso lo resuelve PostgreSQL), sino como **capa de evidencia compartida para operaciones críticas**. El contrato registrará y ejecutará únicamente lo siguiente:
-
-| Función | Qué registra o ejecuta en la red | Historia |
-| --- | --- | --- |
-| Registrar taller autorizado | Identificador del taller y su estado (habilitado / rechazado), firmado por el administrador | `HU1JA(1)`, `HU1JT(1)` |
-| Registrar vehículo | Identificador técnico del vehículo y la `Address` del propietario actual del historial | `HU1JP(1)` |
-| Publicar evidencia de servicio | Identificador del vehículo, del servicio y del taller, hash del registro off-chain y timestamp | `HU2JT(2)`, `HU3JT(3)` |
-| Consultar evidencia | Lectura del hash publicado para comprobar que el registro en PostgreSQL no fue modificado | `HU2JP(2)` |
-| Transferir titularidad del historial | Actualización de la `Address` del propietario y evento de transferencia, sin alterar los servicios previos | `HU4JP(4)` |
-
-Las operaciones protegidas usarán `Address` y `require_auth`: solo un taller habilitado puede publicar evidencia y solo el propietario actual puede transferir el historial. No se almacenan en el ledger datos personales, documentos ni órdenes de trabajo completas; permisos de consulta (`HU3JP(3)`) y detección de duplicados (`HU6JA(2)`) permanecen en el backend.
-
-### Por qué hace falta un contrato propio
-
-La propuesta de valor del Blueprint es **integridad + trazabilidad + autorización de operaciones críticas**. Las reglas que la sostienen son específicas del dominio: qué talleres pueden publicar, a qué vehículo pertenece cada evidencia, quién es el titular actual del historial y que una transferencia nunca modifique los registros anteriores. Ninguna herramienta genérica del ecosistema impone estas reglas por nosotros; un contrato propio las hace verificables por cualquier participante sin depender de la base de datos de una sola organización, que es precisamente la decisión técnica central del Blueprint.
-
-### Qué se descartó (Opción B)
-
-- **Escribir el hash en el campo memo o en `manageData` de una transacción Stellar clásica:** permite anclar evidencia, pero no valida quién publica ni gestiona la titularidad del historial; toda la autorización quedaría en el backend y la cadena solo guardaría datos sin reglas.
-- **Tokenizar el vehículo como activo/NFT (p. ej. con contratos estándar de tokens):** modela propiedad transferible y comerciable, lo cual podría confundirse con el traspaso jurídico que el Blueprint excluye explícitamente del MVP.
-- **Servicios externos de notarización o anclaje de hashes:** añaden un intermediario y no ofrecen la lógica de talleres habilitados ni la continuidad del historial entre propietarios.
-
-Sí se aprovechará el ecosistema existente como **herramientas de apoyo**, no como sustituto del contrato: Soroban SDK y Stellar CLI para desarrollo y despliegue, Stellar Testnet y Friendbot para pruebas sin activos reales, y Stellar Expert para que la referencia de publicación (`HU3JT(3)`) sea verificable públicamente.
-
----
+En esta entrega la decisión queda documentada pero no implementada: el
+contrato todavía no está escrito ni desplegado en Stellar Testnet. Lo que sí
+se construyó en el front es la simulación de cómo se vería esa evidencia una
+vez publicada (ver sección "Panel de Taller" arriba), para anticipar la
+integración real de la siguiente etapa.
 
 ## 3. Participación del equipo
 
-> Pendiente: usuario de GitHub, aporte y responsabilidad de cada integrante.
-
----
+| Integrante | Usuario de GitHub | Aporte | Responsabilidad |
+|---|---|---|---|
+| Juan Carlos | _(completar)_ | Base del proyecto (estructura, navegación, selección de rol) y las 4 pantallas de Propietario (HU1JP–HU4JP) | Rol Propietario |
+| Alexis | _(completar)_ | Las 3 pantallas de Taller: registro de taller, registro de servicio y evidencia de publicación (HU1JT–HU3JT) | Rol Taller |
+| Lily | _(completar)_ | Las 3 pantallas de Administrador: validar talleres y detectar duplicados (HU1JA, HU6JA) | Rol Administrador |
 
 ## 4. Bloqueos y siguiente paso
 
-> Pendiente.
+No hubo bloqueos técnicos relevantes; se usaron datos simulados en memoria,
+sin depender de backend ni de la integración con Stellar.
+
+El contrato Soroban todavía no se encuentra implementado, dado que su
+desarrollo corresponde a la siguiente etapa. El próximo paso será
+implementar y desplegar en Stellar Testnet el contrato definido, integrar
+las operaciones críticas (registro de vehículo, registro de servicio,
+transferencia de historial) con el frontend, y validar la evidencia de
+publicación con datos reales en lugar de simulados.
