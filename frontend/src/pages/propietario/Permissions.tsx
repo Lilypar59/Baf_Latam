@@ -10,6 +10,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { permissions, vehicles } from '@/data/mockData';
+import type { Permission } from '@/types';
 
 const scopeLabels: Record<string, string> = {
   full: 'Acceso completo',
@@ -25,13 +26,52 @@ const scopeColors: Record<string, string> = {
 
 export default function Permissions() {
   const [showModal, setShowModal] = useState(false);
+  // Antes: "Otorgar Permiso" y "Revocar" no hacían nada (el formulario solo
+  // cerraba el modal, y el botón Revocar no tenía ninguna acción conectada).
+  // Se guarda la lista de permisos en estado local, inicializada con los
+  // datos simulados, para que ambas acciones se reflejen de verdad en pantalla.
+  const [allPermissions, setAllPermissions] = useState<Permission[]>(permissions);
+
+  const [newVehicleId, setNewVehicleId] = useState('');
+  const [newWorkshopEmail, setNewWorkshopEmail] = useState('');
+  const [newScope, setNewScope] = useState<Permission['scope']>('maintenance_only');
+  const [newExpiry, setNewExpiry] = useState('');
 
   const myVehicles = vehicles.filter((v) => v.ownerId === 'u1');
   const myVehicleIds = myVehicles.map((v) => v.id);
-  const myPermissions = permissions.filter((p) => myVehicleIds.includes(p.vehicleId));
+  const myPermissions = allPermissions.filter((p) => myVehicleIds.includes(p.vehicleId));
 
   const granted = myPermissions.filter((p) => p.granted);
   const revoked = myPermissions.filter((p) => !p.granted);
+
+  function handleGrant(e: React.FormEvent) {
+    e.preventDefault();
+    const vehicle = myVehicles.find((v) => v.id === newVehicleId);
+    if (!vehicle) return;
+
+    const newPermission: Permission = {
+      id: `p${allPermissions.length + 1}`,
+      workshopId: `manual-${Date.now()}`,
+      workshopName: newWorkshopEmail,
+      vehicleId: vehicle.id,
+      vehiclePlate: vehicle.plate,
+      granted: true,
+      dateGranted: new Date().toISOString().slice(0, 10),
+      expiryDate: newExpiry,
+      scope: newScope,
+    };
+
+    setAllPermissions((prev) => [...prev, newPermission]);
+    setShowModal(false);
+    setNewVehicleId('');
+    setNewWorkshopEmail('');
+    setNewScope('maintenance_only');
+    setNewExpiry('');
+  }
+
+  function handleRevoke(id: string) {
+    setAllPermissions((prev) => prev.map((p) => (p.id === id ? { ...p, granted: false } : p)));
+  }
 
   return (
     <div className="space-y-6">
@@ -114,7 +154,7 @@ export default function Permissions() {
                     <Clock className="h-3.5 w-3.5" />
                     Expira: {p.expiryDate}
                   </div>
-                  <button className="btn-danger">
+                  <button onClick={() => handleRevoke(p.id)} className="btn-danger">
                     <ShieldX className="h-3.5 w-3.5" />
                     Revocar
                   </button>
@@ -163,10 +203,10 @@ export default function Permissions() {
               </button>
             </div>
 
-            <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); setShowModal(false); }}>
+            <form className="space-y-4" onSubmit={handleGrant}>
               <div>
                 <label className="label">Vehículo</label>
-                <select required className="select-field">
+                <select required value={newVehicleId} onChange={(e) => setNewVehicleId(e.target.value)} className="select-field">
                   <option value="">Seleccionar vehículo...</option>
                   {myVehicles.map((v) => (
                     <option key={v.id} value={v.id}>
@@ -178,12 +218,24 @@ export default function Permissions() {
 
               <div>
                 <label className="label">Taller (Email)</label>
-                <input required type="email" placeholder="taller@email.com" className="input-field" />
+                <input
+                  required
+                  type="email"
+                  value={newWorkshopEmail}
+                  onChange={(e) => setNewWorkshopEmail(e.target.value)}
+                  placeholder="taller@email.com"
+                  className="input-field"
+                />
               </div>
 
               <div>
                 <label className="label">Alcance del permiso</label>
-                <select required className="select-field">
+                <select
+                  required
+                  value={newScope}
+                  onChange={(e) => setNewScope(e.target.value as Permission['scope'])}
+                  className="select-field"
+                >
                   <option value="maintenance_only">Solo mantenimiento</option>
                   <option value="diagnostic_only">Solo diagnóstico</option>
                   <option value="full">Acceso completo</option>
@@ -192,7 +244,7 @@ export default function Permissions() {
 
               <div>
                 <label className="label">Fecha de expiración</label>
-                <input required type="date" className="input-field" />
+                <input required type="date" value={newExpiry} onChange={(e) => setNewExpiry(e.target.value)} className="input-field" />
               </div>
 
               <div className="flex items-start gap-2 rounded-lg bg-teal-50 p-3">
