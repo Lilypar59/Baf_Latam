@@ -1,0 +1,10 @@
+# Paquetes de node
+node_modules/
+
+# Material local de la semana 4 (no se sube)
+docs/semana4/Entregable 4_ Functional MVP (CO).md
+docs/semana4/pitch.md
+docs/semana4/pitch-v2.md
+docs/semana4/vehiclechain-pitch.mp4
+docs/semana4/vehiclechain-pitch-con-voz.mp4
+docs/semana4/voz.ogg
