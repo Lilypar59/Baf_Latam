@@ -1,7 +1,17 @@
 import { useState } from 'react';
-import { Car, CheckCircle2, Loader2, Fuel, Gauge, Hash, Calendar, Palette } from 'lucide-react';
+import { Car, CheckCircle2, Loader2 } from 'lucide-react';
+import { useWallet } from '@/lib/wallet';
+import { chain, shortHex, vehicleIdOf } from '@/lib/stellar';
+import { store } from '@/lib/store';
+import { TxLink, TxProgress, useTx } from '@/components/TxStatus';
+import type { PageKey } from '@/layouts/AppLayout';
 
-export default function RegisterVehicle() {
+// HU1JP(1): el propietario registra su vehículo. En el contrato solo queda
+// SHA-256(VIN) y su dirección como titular; el resto de datos queda off-chain.
+export default function RegisterVehicle({ onNavigate }: { onNavigate?: (p: PageKey) => void }) {
+  const { address } = useWallet();
+  const tx = useTx();
+  const [vehicleIdHex, setVehicleIdHex] = useState('');
   const [plate, setPlate] = useState('');
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
@@ -11,7 +21,7 @@ export default function RegisterVehicle() {
   const [mileage, setMileage] = useState('');
   const [fuelType, setFuelType] = useState('gasoline');
   const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const loading = tx.busy;
 
   const brands = ['Toyota', 'Honda', 'Ford', 'Chevrolet', 'Mazda', 'Tesla', 'Nissan', 'Volkswagen', 'BMW', 'Mercedes-Benz', 'Renault', 'Kia', 'Hyundai'];
   const fuelTypes = [
@@ -21,16 +31,37 @@ export default function RegisterVehicle() {
     { value: 'hybrid', label: 'Híbrido' },
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      setSubmitted(true);
-    }, 1500);
+    if (!address || loading) return;
+    const id = await vehicleIdOf(vin);
+    const hash = await tx.run((onPhase) => chain.registerVehicle(address, id, onPhase));
+    if (!hash) return;
+    store.addVehicle({
+      vin: vin.trim().toUpperCase(),
+      vehicleIdHex: id,
+      plate: plate.toUpperCase(),
+      brand,
+      model,
+      year: Number(year),
+      color,
+      mileage: Number(mileage),
+      fuelType: fuelType as 'gasoline',
+      registeredBy: address,
+      registeredAt: new Date().toISOString().slice(0, 10),
+      txHash: hash,
+    });
+    setVehicleIdHex(id);
+    setSubmitted(true);
   };
 
-  if (submitted) {
+  const resetForm = () => {
+    setSubmitted(false);
+    tx.reset();
+    setPlate(''); setBrand(''); setModel(''); setYear(''); setColor(''); setVin(''); setMileage('');
+  };
+
+  if (submitted && tx.state.status === 'success') {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="card max-w-md p-8 text-center animate-scale-in">
@@ -39,22 +70,23 @@ export default function RegisterVehicle() {
           </div>
           <h2 className="text-xl font-bold text-slate-900">Vehículo registrado</h2>
           <p className="mt-2 text-sm text-slate-500">
-            El vehículo <span className="font-mono font-semibold text-slate-700">{plate.toUpperCase()}</span> se registró
-            en la blockchain. El registro es inmutable y verificable.
+            El vehículo <span className="font-mono font-semibold text-slate-700">{plate.toUpperCase()}</span> quedó
+            registrado en Stellar Testnet y tú eres el titular de su historial. Ya puede recibir servicios de talleres habilitados.
           </p>
-          <div className="mt-4 rounded-lg bg-slate-50 p-3 text-left">
-            <p className="text-xs text-slate-500">Hash del bloque</p>
-            <p className="font-mono text-sm text-slate-700">0x3a7b...9f2c</p>
+          <div className="mt-4 space-y-2 rounded-lg bg-slate-50 p-3 text-left text-xs">
+            <p className="text-slate-500">ID del vehículo (SHA-256 del VIN)
+              <span className="float-right font-mono text-slate-700" title={vehicleIdHex}>{shortHex(vehicleIdHex)}</span>
+            </p>
+            <p className="text-slate-500">Transacción
+              <span className="float-right"><TxLink hash={tx.state.hash} label="hash" /></span>
+            </p>
           </div>
-          <button
-            onClick={() => {
-              setSubmitted(false);
-              setPlate(''); setBrand(''); setModel(''); setYear(''); setColor(''); setVin(''); setMileage('');
-            }}
-            className="btn-primary mt-6 w-full"
-          >
-            Registrar otro vehículo
-          </button>
+          <div className="mt-6 flex gap-3">
+            <button onClick={resetForm} className="btn-secondary flex-1 justify-center">Registrar otro</button>
+            {onNavigate && (
+              <button onClick={() => onNavigate('vehicle-history')} className="btn-primary flex-1 justify-center">Ver mis vehículos</button>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -65,7 +97,7 @@ export default function RegisterVehicle() {
       <div>
         <h1 className="page-title">Registrar Vehículo</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Completa los datos del vehículo. Se creará un registro inmutable en la blockchain.
+          HU1JP · Registra tu vehículo para empezar su historial verificable.
         </p>
       </div>
 
@@ -182,23 +214,25 @@ export default function RegisterVehicle() {
             </svg>
           </div>
           <p className="text-xs leading-relaxed text-teal-700">
-            Al registrar el vehículo, los datos se almacenan permanentemente en la blockchain.
-            No podrán modificarse posteriormente. Verifica que toda la información sea correcta.
+            En Stellar solo se publica una huella (hash) del VIN y tu dirección como titular; placa, marca y demás datos
+            quedan fuera de la cadena. El VIN no se puede cambiar después: verifícalo antes de firmar.
           </p>
         </div>
 
+        <TxProgress state={tx.state} />
+
         <div className="flex justify-end gap-3">
-          <button type="button" className="btn-secondary">Cancelar</button>
+          <button type="button" onClick={resetForm} disabled={loading} className="btn-secondary">Limpiar</button>
           <button type="submit" disabled={loading} className="btn-primary">
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Registrando...
+                Registrando…
               </>
             ) : (
               <>
                 <Car className="h-4 w-4" />
-                Registrar Vehículo
+                Firmar y registrar
               </>
             )}
           </button>

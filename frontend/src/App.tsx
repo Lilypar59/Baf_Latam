@@ -29,7 +29,9 @@ import AdminDashboard from '@/pages/administrador/AdminDashboard';
 import ValidateWorkshops from '@/pages/administrador/ValidateWorkshops';
 import DetectDuplicates from '@/pages/administrador/DetectDuplicates';
 
-import { transfers, workshopApplications, findPotentialDuplicates, maintenanceRecords } from '@/data/mockData';
+import { useWallet } from '@/lib/wallet';
+import { findDuplicateServices, useStore } from '@/lib/store';
+import { shortAddr } from '@/lib/stellar';
 
 interface NavEntry {
   key: PageKey;
@@ -41,8 +43,11 @@ interface NavEntry {
 export default function App() {
   const [role, setRole] = useState<AppRole | null>(null);
   const [activePage, setActivePage] = useState<PageKey>('dashboard');
+  const wallet = useWallet();
+  const db = useStore();
 
-  if (!role) {
+  // Sin wallet (o si se desconecta) se vuelve al acceso; el admin pierde el panel si cambia de cuenta.
+  if (!role || !wallet.address || (role === 'administrador' && !wallet.isAdmin && !wallet.loading)) {
     return (
       <RoleGate
         onSelectRole={(r) => {
@@ -59,27 +64,26 @@ export default function App() {
     setRole(null);
   }
 
+  const me = wallet.address;
+  const userInitials = me.slice(1, 3);
+  const myApplication = db.applications.find((a) => a.wallet === me);
+
   // --- Propietario ---
   if (role === 'propietario') {
     const navItems: NavEntry[] = [
       { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { key: 'register-vehicle', label: 'Registrar Vehículo', icon: PlusCircle },
       { key: 'vehicle-history', label: 'Mis Vehículos', icon: Car },
-      {
-        key: 'transfer-history',
-        label: 'Transferencias',
-        icon: ArrowLeftRight,
-        badge: transfers.filter((t) => t.status === 'pending').length,
-      },
+      { key: 'transfer-history', label: 'Transferir historial', icon: ArrowLeftRight },
       { key: 'permissions', label: 'Permisos a Talleres', icon: ShieldCheck },
     ];
 
     const renderPage = () => {
       switch (activePage) {
         case 'register-vehicle':
-          return <RegisterVehicle />;
+          return <RegisterVehicle onNavigate={setActivePage} />;
         case 'vehicle-history':
-          return <VehicleHistory />;
+          return <VehicleHistory onNavigate={setActivePage} />;
         case 'transfer-history':
           return <TransferHistory />;
         case 'permissions':
@@ -95,8 +99,8 @@ export default function App() {
         activePage={activePage}
         onNavigate={setActivePage}
         roleLabel="Panel del Propietario"
-        userName="Juan Carlos"
-        userInitials="JC"
+        userName={shortAddr(me)}
+        userInitials={userInitials}
         onSwitchRole={switchRole}
       >
         {renderPage()}
@@ -108,8 +112,8 @@ export default function App() {
   if (role === 'taller') {
     const navItems: NavEntry[] = [
       { key: 'workshop-dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { key: 'workshop-register', label: 'Registrar Taller', icon: ShieldCheck },
-      { key: 'workshop-service', label: 'Registrar Servicio', icon: Wrench },
+      { key: 'workshop-register', label: wallet.workshopEnabled ? 'Mi taller' : 'Solicitar incorporación', icon: ShieldCheck },
+      { key: 'workshop-service', label: 'Registrar servicio', icon: Wrench },
     ];
 
     const renderPage = () => {
@@ -117,7 +121,7 @@ export default function App() {
         case 'workshop-register':
           return <RegisterWorkshop />;
         case 'workshop-service':
-          return <RegisterService />;
+          return <RegisterService onNavigate={setActivePage} />;
         default:
           return <WorkshopDashboard onNavigate={setActivePage} />;
       }
@@ -129,8 +133,8 @@ export default function App() {
         activePage={activePage}
         onNavigate={setActivePage}
         roleLabel="Panel del Taller"
-        userName="Alexis"
-        userInitials="AL"
+        userName={myApplication?.name ?? shortAddr(me)}
+        userInitials={userInitials}
         onSwitchRole={switchRole}
       >
         {renderPage()}
@@ -139,8 +143,8 @@ export default function App() {
   }
 
   // --- Administrador ---
-  const pendingCount = workshopApplications.filter((w) => w.status === 'pending').length;
-  const duplicateCount = findPotentialDuplicates(maintenanceRecords).length;
+  const pendingCount = db.applications.filter((w) => w.status === 'pending').length;
+  const duplicateCount = findDuplicateServices(db.services).length;
 
   const navItems: NavEntry[] = [
     { key: 'admin-dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -165,8 +169,8 @@ export default function App() {
       activePage={activePage}
       onNavigate={setActivePage}
       roleLabel="Panel del Administrador"
-      userName="Lily"
-      userInitials="LY"
+      userName={shortAddr(me)}
+      userInitials={userInitials}
       onSwitchRole={switchRole}
     >
       {renderPage()}
