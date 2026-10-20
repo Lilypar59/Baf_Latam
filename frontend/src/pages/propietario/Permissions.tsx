@@ -10,6 +10,8 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { permissions, vehicles } from '@/data/mockData';
+import { useWallet } from '@/lib/wallet';
+import { useMyVehicles } from '@/lib/useVehicles';
 
 const scopeLabels: Record<string, string> = {
   full: 'Acceso completo',
@@ -26,9 +28,12 @@ const scopeColors: Record<string, string> = {
 export default function Permissions() {
   const [showModal, setShowModal] = useState(false);
 
-  const myVehicles = vehicles.filter((v) => v.ownerId === 'u1');
-  const myVehicleIds = myVehicles.map((v) => v.id);
-  const myPermissions = permissions.filter((p) => myVehicleIds.includes(p.vehicleId));
+  const { address } = useWallet();
+  const { vehicles: myVehicles } = useMyVehicles(address);
+  // HU3JP(3) vive off-chain (backend), como define el Blueprint. Mientras no
+  // hay backend, la lista de permisos es de ejemplo (mockData).
+  const exampleIds = vehicles.filter((v) => v.ownerId === 'u1').map((v) => v.id);
+  const myPermissions = permissions.filter((p) => exampleIds.includes(p.vehicleId));
 
   const granted = myPermissions.filter((p) => p.granted);
   const revoked = myPermissions.filter((p) => !p.granted);
@@ -38,7 +43,8 @@ export default function Permissions() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="page-title">Permisos a Talleres</h1>
-          <p className="mt-1 text-sm text-slate-500">Controla qué talleres pueden acceder a tus vehículos</p>
+          <p className="mt-1 text-sm text-slate-500">HU3JP · Controla qué talleres pueden consultar el historial de tus vehículos</p>
+          <p className="mt-1 text-xs text-amber-600">Los permisos se gestionan fuera de la cadena (backend). Lista de ejemplo en esta versión.</p>
         </div>
         <button onClick={() => setShowModal(true)} className="btn-primary">
           <Plus className="h-4 w-4" />
@@ -169,7 +175,7 @@ export default function Permissions() {
                 <select required className="select-field">
                   <option value="">Seleccionar vehículo...</option>
                   {myVehicles.map((v) => (
-                    <option key={v.id} value={v.id}>
+                    <option key={v.vehicleIdHex} value={v.vehicleIdHex}>
                       {v.brand} {v.model} — {v.plate}
                     </option>
                   ))}

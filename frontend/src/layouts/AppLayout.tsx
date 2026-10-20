@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react';
-import { Link, Bell, Search, ArrowLeftRight } from 'lucide-react';
+import { Link, Search, ArrowLeftRight, ExternalLink } from 'lucide-react';
+import { explorer } from '@/lib/stellar';
 
 // PageKey reúne las pantallas de los 3 roles en un solo tipo.
 // Propietario ya existía; workshop- y admin- son las pantallas nuevas de esta semana.
@@ -111,9 +112,17 @@ export default function AppLayout({
             />
           </div>
           <div className="ml-auto flex items-center gap-3">
-            <button className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700">
-              <Bell className="h-4 w-4" />
-            </button>
+            <a
+              href={explorer.contract()}
+              target="_blank"
+              rel="noreferrer"
+              className="hidden items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100 sm:flex"
+              title="Contrato VehicleChain en Stellar Expert"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              Stellar Testnet
+              <ExternalLink className="h-3 w-3" />
+            </a>
             <div className="h-6 w-px bg-slate-200" />
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-100 text-xs font-bold text-teal-700">
